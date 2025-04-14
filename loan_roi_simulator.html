@@ -1,0 +1,121 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loan ROI Simulator</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input[type=range] { width: 100%; }
+    .container { max-width: 700px; margin: auto; }
+    .slider-group { margin-bottom: 20px; }
+    .summary { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Loan ROI Simulator</h1>
+
+    <div class="slider-group">
+      <label>Daily Loan Amount: ₹<span id="loanAmtLabel">200000</span></label>
+      <input type="range" min="100000" max="500000" step="10000" value="200000" id="loanAmt">
+    </div>
+
+    <div class="slider-group">
+      <label>EMI Collected (%): <span id="emiPctLabel">90</span>%</label>
+      <input type="range" min="70" max="100" value="90" id="emiPct">
+    </div>
+
+    <div class="slider-group">
+      <label>Reinvestment Rate (% of closed loan): <span id="reinvestLabel">100</span>%</label>
+      <input type="range" min="50" max="100" value="100" id="reinvest">
+    </div>
+
+    <div class="slider-group">
+      <label>NPA Rate (%): <span id="npaLabel">5</span>%</label>
+      <input type="range" min="0" max="30" value="5" id="npa">
+    </div>
+
+    <div class="slider-group">
+      <label>EMI Return per ₹1L Loan: ₹<span id="emiAmtLabel">125000</span></label>
+      <input type="range" min="110000" max="150000" step="5000" value="125000" id="emiAmt">
+    </div>
+
+    <button onclick="simulate()">Simulate</button>
+
+    <div class="summary" id="results"></div>
+  </div>
+
+  <script>
+    const updateLabels = () => {
+      loanAmtLabel.textContent = loanAmt.value;
+      emiPctLabel.textContent = emiPct.value;
+      reinvestLabel.textContent = reinvest.value;
+      npaLabel.textContent = npa.value;
+      emiAmtLabel.textContent = emiAmt.value;
+    };
+
+    loanAmt.oninput = emiPct.oninput = reinvest.oninput = npa.oninput = emiAmt.oninput = updateLabels;
+
+    function simulate() {
+      const days = 360;
+      const loanTenure = 120;
+      const emiDays = 100;
+      const principal = 10000000;
+      const emiFactor = emiAmt.value / 100000;
+      const dailyLoan = parseInt(loanAmt.value);
+      const emiReceivedPct = parseInt(emiPct.value) / 100;
+      const reinvestPct = parseInt(reinvest.value) / 100;
+      const npaRate = parseInt(npa.value) / 100;
+
+      let loans = [{ start: 0, amount: principal }];
+      let newLoanTotal = 0;
+      let totalEmi = 0;
+      let reinvestReturns = 0;
+
+      for (let day = 0; day < days; day++) {
+        if (day % 7 !== 6) {
+          loans.forEach(loan => {
+            if (day >= loan.start && day < loan.start + loanTenure && Math.random() > npaRate) {
+              totalEmi += loan.amount * emiFactor / emiDays * emiReceivedPct;
+            }
+          });
+        }
+
+        if (day % 1 === 0) {
+          loans.push({ start: day, amount: dailyLoan });
+          newLoanTotal += dailyLoan;
+        }
+
+        loans.forEach((loan, idx) => {
+          if (loan.start + loanTenure === day) {
+            let reinvestAmt = loan.amount * reinvestPct;
+            loans.push({ start: day, amount: reinvestAmt });
+            reinvestReturns += reinvestAmt * 0.7;
+          }
+        });
+      }
+
+      let cashInHand = totalEmi + reinvestReturns;
+      let totalOut = principal + newLoanTotal;
+      let netProfit = cashInHand - totalOut;
+      let roi = ((netProfit / totalOut) * 100).toFixed(2);
+      let monthlyROI = (roi / 12).toFixed(2);
+
+      results.innerHTML = `
+        <h3>Simulation Result (360 Days)</h3>
+        <p><strong>Total EMI Collected:</strong> ₹${Math.round(totalEmi).toLocaleString()}</p>
+        <p><strong>Reinvestment Returns:</strong> ₹${Math.round(reinvestReturns).toLocaleString()}</p>
+        <p><strong>Cash in Hand:</strong> ₹${Math.round(cashInHand).toLocaleString()}</p>
+        <p><strong>Total Outflow:</strong> ₹${Math.round(totalOut).toLocaleString()}</p>
+        <p><strong>Net Profit:</strong> ₹${Math.round(netProfit).toLocaleString()}</p>
+        <p><strong>ROI Total:</strong> ${roi}%</p>
+        <p><strong>Avg ROI/Month:</strong> ${monthlyROI}%</p>
+      `;
+    }
+
+    updateLabels();
+  </script>
+</body>
+</html>
